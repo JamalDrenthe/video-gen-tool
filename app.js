@@ -15,7 +15,14 @@ $("negative").value =
   "watermark, text, signature";
 
 let clientPromise = null;
-const getClient = () => (clientPromise ??= Client.connect(SPACE));
+const hfTokenInput = $("hfToken");
+hfTokenInput.value = localStorage.getItem("vg_hf_token") || "";
+const getClient = () => {
+  const token = hfTokenInput.value.trim();
+  if (token) localStorage.setItem("vg_hf_token", token);
+  clientPromise ??= Client.connect(SPACE, token ? { hf_token: token } : {});
+  return clientPromise;
+};
 
 $("themeToggle").onclick = () => document.body.classList.toggle("light");
 
@@ -76,6 +83,8 @@ $("generate").onclick = async () => {
     setStatus(`Klaar. Seed: ${result.data[1]}`, false);
   } catch (err) {
     console.error(err);
-    setStatus("Fout: " + (err?.message ?? err), false);
+    let msg = err?.message ?? String(err);
+    if (msg.includes("ZeroGPU")) msg += " — vul een HF token in voor meer quota.";
+    setStatus("Fout: " + msg, false);
   }
 };
