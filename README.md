@@ -1,11 +1,15 @@
-<div align="center">
+# Video Gen Tool
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+Genereer video's met **Wan2.1-VACE-14B** via een Hugging Face Space — geen Google API meer.
 
-  <h1>Built with AI Studio</h2>
+## Onderdelen
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+- `index.html`, `app.js`, `style.css` — statische frontend (Vercel-deploybaar) die de Space aanroept via `@gradio/client`
+- `space/` — Gradio Space backend (`app.py`) met `WanVACEPipeline` op GPU-hardware
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+## Space deployen
 
-</div>
+1. Maak een Space op huggingface.co (SDK: Gradio), bijv. `JamalDrenthe/video-gen-tool`
+2. Push `space/` als de Space-repo root: `git clone https://huggingface.co/spaces/JamalDrenthe/video-gen-tool` en kopieer de bestanden
+3. Kies GPU-hardware in Space Settings (14B-model: A10G/L40S of ZeroGPU aanbevolen)
+4. Pas `SPACE` in `app.js` aan als de naam anders is
