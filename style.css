@@ -66,3 +66,5 @@ select option { color: #161a26; }
 video { width: 100%; border-radius: 14px; display: block; margin-bottom: 12px; background: #000; }
 .foot { text-align: center; color: var(--muted); font-size: 12px; }
 code { background: rgba(127,140,180,.15); padding: 2px 6px; border-radius: 6px; }
+.previews { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.thumb { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }
