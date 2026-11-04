@@ -1,0 +1,5 @@
+{
+  "name": "JD Video Studio",
+  "description": "Generate videos with Wan2.2 via free Hugging Face Spaces.",
+  "requestFramePermissions": []
+}
