@@ -1,21 +1,7 @@
-import React, { useState, useCallback } from 'react';
-import ApiKeySelector from './components/ApiKeySelector';
+import React from 'react';
 import VideoGenerator from './components/VideoGenerator';
 
 const App: React.FC = () => {
-  const [hasKey, setHasKey] = useState<boolean>(() =>
-    !!localStorage.getItem('vg_hf_token') || localStorage.getItem('vg_hf_skip') === '1'
-  );
-
-  const handleAuthError = useCallback(() => {
-    setHasKey(false);
-  }, []);
-
-  const handleKeySelected = useCallback(() => {
-    // Assume success to mitigate race condition as per instructions
-    setHasKey(true);
-  }, []);
-
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans selection:bg-indigo-500/30">
       <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-10">
@@ -33,11 +19,7 @@ const App: React.FC = () => {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
-        {!hasKey ? (
-          <ApiKeySelector onKeySelected={handleKeySelected} />
-        ) : (
-          <VideoGenerator onAuthError={handleAuthError} />
-        )}
+        <VideoGenerator />
       </main>
 
       <footer className="max-w-6xl mx-auto px-4 py-6 border-t border-slate-800 text-center text-slate-500 text-sm mt-auto">

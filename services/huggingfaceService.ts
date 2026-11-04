@@ -54,11 +54,6 @@ const blobToBase64 = async (blob: Blob): Promise<string> => {
 const toSpaceFile = async (base64: string, aspectRatio: AspectRatio): Promise<string> =>
   blobToBase64(await centerCropImage(imageBlobFromBase64(base64), aspectRatio));
 
-const authHeaders = (): Record<string, string> => {
-  const token = localStorage.getItem("vg_hf_token");
-  return token ? { "x-hf-token": token } : {};
-};
-
 const requestError = async (response: Response): Promise<Error> => {
   const text = await response.text();
   let message = text;
@@ -106,7 +101,7 @@ const callSpace = async (
 ): Promise<any[]> => {
   const startResponse = await fetch("/api/hf/start", {
     method: "POST",
-    headers: { "content-type": "application/json", ...authHeaders() },
+    headers: { "content-type": "application/json" },
     body: JSON.stringify({ space, data, files })
   });
   if (!startResponse.ok) throw await requestError(startResponse);
@@ -120,7 +115,7 @@ const callSpace = async (
   const resultUrl = new URL("/api/hf/result", window.location.origin);
   resultUrl.searchParams.set("space", space);
   resultUrl.searchParams.set("event_id", startBody.event_id);
-  const resultResponse = await fetch(resultUrl, { headers: authHeaders() });
+  const resultResponse = await fetch(resultUrl);
   if (!resultResponse.ok) throw await requestError(resultResponse);
   if (!resultResponse.body) throw new Error("Hugging Face returned an empty event stream.");
 
@@ -147,7 +142,7 @@ const callSpace = async (
       }
       if (event === "error") {
         await reader.cancel();
-        throw new Error(eventError(eventData) || "Hugging Face Space returned an error (often ZeroGPU quota). Try again later or add a token.");
+        throw new Error(eventError(eventData) || "Hugging Face Space returned an error. The daily ZeroGPU quota may be used up, please try again later.");
       }
       if (event === "generating" || event === "progress") {
         onProgress("Generating on Hugging Face ZeroGPU...");
@@ -164,7 +159,7 @@ const callSpace = async (
           return result;
         }
         if (event === "error") {
-          throw new Error(eventError(eventData) || "Hugging Face Space returned an error (often ZeroGPU quota). Try again later or add a token.");
+          throw new Error(eventError(eventData) || "Hugging Face Space returned an error. The daily ZeroGPU quota may be used up, please try again later.");
         }
       }
       throw new Error("Hugging Face event stream ended before the job completed.");
@@ -176,9 +171,7 @@ const outputUrl = (value: any): string | undefined =>
   value?.video?.url ?? value?.image?.url ?? value?.url ?? value;
 
 const downloadBlob = async (uri: string): Promise<Blob> => {
-  const response = await fetch(`/api/hf/file?url=${encodeURIComponent(uri)}`, {
-    headers: authHeaders()
-  });
+  const response = await fetch(`/api/hf/file?url=${encodeURIComponent(uri)}`);
   if (!response.ok) throw await requestError(response);
   const blob = await response.blob();
   if (blob.size === 0) throw new Error("Downloaded video file is empty.");
@@ -193,9 +186,7 @@ const qualitySteps = (quality: VideoConfig["quality"], firstLastFrame = false): 
 };
 
 const fetchImage = async (uri: string): Promise<Blob> => {
-  const response = await fetch(`/api/hf/file?url=${encodeURIComponent(uri)}`, {
-    headers: authHeaders()
-  });
+  const response = await fetch(`/api/hf/file?url=${encodeURIComponent(uri)}`);
   if (!response.ok) throw await requestError(response);
   return response.blob();
 };
