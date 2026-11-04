@@ -1,7 +1,7 @@
 import { Client, handle_file } from "https://cdn.jsdelivr.net/npm/@gradio/client@1.15.7/dist/index.min.js";
 
-// Publieke Space met Wan2.1-VACE-14B (+ FusionX LoRA) op ZeroGPU.
-const SPACE = "linoyts/wan2-1-VACE-fast";
+// Publieke Space met Wan2.2 (fp8/AOTI, snel) op ZeroGPU — image-to-video.
+const SPACE = "zerogpu-aoti/wan2-2-fp8da-aoti-faster";
 
 const $ = (id) => document.getElementById(id);
 $("spaceName").textContent = SPACE;
@@ -27,14 +27,14 @@ const getClient = () => {
 $("themeToggle").onclick = () => document.body.classList.toggle("light");
 
 const previews = $("previews");
-$("images").addEventListener("change", (e) => {
+$("image").addEventListener("change", (e) => {
   previews.innerHTML = "";
-  for (const f of e.target.files) {
-    const img = document.createElement("img");
-    img.src = URL.createObjectURL(f);
-    img.className = "thumb";
-    previews.appendChild(img);
-  }
+  const f = e.target.files[0];
+  if (!f) return;
+  const img = document.createElement("img");
+  img.src = URL.createObjectURL(f);
+  img.className = "thumb";
+  previews.appendChild(img);
 });
 
 function setStatus(text, busy) {
@@ -44,39 +44,31 @@ function setStatus(text, busy) {
 }
 
 $("generate").onclick = async () => {
-  const files = [...$("images").files];
-  const mode = $("mode").value;
+  const file = $("image").files[0];
   const prompt = $("prompt").value.trim();
   if (!prompt) { setStatus("Vul eerst een prompt in.", false); return; }
-  if (!files.length) { setStatus("Upload minimaal één beeld — VACE genereert video vanuit beelden.", false); return; }
-  if (mode === "First - Last Frame" && files.length < 2) {
-    setStatus("First - Last Frame heeft minimaal 2 beelden nodig.", false); return;
-  }
+  if (!file) { setStatus("Upload eerst een beeld — het model animeert vanuit een afbeelding.", false); return; }
 
-  const [h, w] = $("size").value.split("x").map(Number);
   try {
     setStatus("Uploaden + verbinden met Space…", true);
     const client = await getClient();
     setStatus("Video wordt gegenereerd (ZeroGPU-wachtrij kan duren)…", true);
 
-    const gallery = files.map((f) => ({ image: handle_file(f) }));
+    const seed = Number($("seed").value);
     const result = await client.predict("/generate_video", {
-      gallery_images: gallery,
-      mode,
+      input_image: handle_file(file),
       prompt,
-      height: h,
-      width: w,
+      steps: Number($("steps").value),
       negative_prompt: $("negative").value,
       duration_seconds: Number($("duration").value),
       guidance_scale: Number($("cfg").value),
-      steps: Number($("steps").value),
-      seed: Number($("seed").value),
-      randomize_seed: Number($("seed").value) < 0,
-      remove_bg: $("removeBg").value === "yes",
+      guidance_scale_2: Number($("cfg").value),
+      seed: seed < 0 ? 42 : seed,
+      randomize_seed: seed < 0,
     });
 
     const vid = result.data[0];
-    const url = vid?.video?.url ?? vid?.url ?? vid?.video?.path ?? vid?.path;
+    const url = vid?.video?.url ?? vid?.url ?? vid?.video?.path ?? vid?.path ?? vid;
     $("video").src = url;
     $("download").href = url;
     $("resultCard").classList.remove("hidden");
