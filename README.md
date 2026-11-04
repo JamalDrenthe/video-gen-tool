@@ -21,11 +21,11 @@ JD Video Studio is Jamal's video generator and timeline editor. It keeps the ori
 | Startbeeld naar video | `zerogpu-aoti/wan2-2-fp8da-aoti-faster` | `/generate_video` |
 | Begin- en eindbeeld naar video | `multimodalart/wan-2-2-first-last-frame` | `/generate_video` |
 
-Voor tekstgeneratie maakt FLUX eerst een startbeeld. Wan2.2 maakt daarna de video. Een Hugging Face-token is optioneel. Een token kan meer dagelijkse GPU-quota geven en wordt alleen in de browser opgeslagen.
+Voor tekstgeneratie maakt FLUX eerst een startbeeld. Wan2.2 maakt daarna de video.
 
 ## Cloudflare Pages-proxy
 
-Alle aanvragen naar Hugging Face lopen via Pages Functions. Stel `HF_TOKEN` als secret in op het Cloudflare Pages-project voor productie en preview. Een token dat in de app is opgeslagen krijgt voorrang; de Pages-secret is de terugvaloptie. Voor lokaal gebruik kan `HF_TOKEN` via `.dev.vars` aan Wrangler worden doorgegeven.
+Alle aanvragen naar Hugging Face lopen via Pages Functions. Stel `HF_TOKEN` als secret in op het Cloudflare Pages-project voor productie en preview. Gebruikers hoeven zelf geen token in te voeren. Voor lokaal gebruik kan `HF_TOKEN` via `.dev.vars` aan Wrangler worden doorgegeven.
 
 ## Tech stack
 
@@ -43,7 +43,7 @@ npm install
 npm run dev
 ```
 
-Open daarna de lokale URL die Vite toont. Voeg desgewenst een Hugging Face-token toe in de app. Er is geen `.env.local` of Gemini API-sleutel nodig.
+Open daarna de lokale URL die Vite toont. Er is geen `.env.local` of Gemini API-sleutel nodig.
 
 ## Scripts
 

@@ -19,7 +19,7 @@ const json = (body: unknown, status = 200) =>
 
 const authorizationHeaders = (request: Request, env: Ctx["env"]): Headers => {
   const headers = new Headers();
-  const token = request.headers.get("x-hf-token")?.trim() || env.HF_TOKEN?.trim();
+  const token = env.HF_TOKEN?.trim();
   if (token) headers.set("Authorization", `Bearer ${token}`);
   return headers;
 };

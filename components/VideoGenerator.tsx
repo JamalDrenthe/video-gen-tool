@@ -3,10 +3,6 @@ import { AspectRatio, GenerationMode, Resolution, VideoConfig, VideoHistoryItem,
 import { generateVeoVideo, extendVeoVideo, downloadVideoUri } from '../services/huggingfaceService';
 import VideoEditor from './VideoEditor';
 
-interface VideoGeneratorProps {
-  onAuthError: () => void;
-}
-
 type SortOption = 'date-desc' | 'date-asc' | 'prompt-desc' | 'prompt-asc';
 
 // Helper component for Image Upload Box
@@ -30,7 +26,7 @@ const ImageUploadBox = ({ title, preview, onUpload, onClear }: { title: string, 
   </div>
 );
 
-const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAuthError }) => {
+const VideoGenerator: React.FC = () => {
   const [mode, setMode] = useState<GenerationMode>('text');
   const [singleImageRole, setSingleImageRole] = useState<'start' | 'reference'>('start');
   const [prompt, setPrompt] = useState<string>('');
@@ -212,20 +208,6 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ onAuthError }) => {
       console.error("Generation error:", err);
       const errorMessage = err.message || "An unexpected error occurred.";
       setError(errorMessage);
-
-      const normalizedError = errorMessage.toLowerCase();
-      if (
-        errorMessage.includes("Requested entity was not found") ||
-        errorMessage.includes("API key not valid") ||
-        errorMessage.includes("billing") ||
-        normalizedError.includes("quota") ||
-        normalizedError.includes("401") ||
-        normalizedError.includes("logged in") ||
-        (normalizedError.includes("invalid") && normalizedError.includes("token"))
-      ) {
-        localStorage.removeItem('vg_hf_skip');
-        onAuthError();
-      }
     } finally {
       setIsGenerating(false);
     }
