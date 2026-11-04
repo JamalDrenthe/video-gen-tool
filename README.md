@@ -23,11 +23,15 @@ JD Video Studio is Jamal's video generator and timeline editor. It keeps the ori
 
 Voor tekstgeneratie maakt FLUX eerst een startbeeld. Wan2.2 maakt daarna de video. Een Hugging Face-token is optioneel. Een token kan meer dagelijkse GPU-quota geven en wordt alleen in de browser opgeslagen.
 
+## Cloudflare Pages-proxy
+
+Alle aanvragen naar Hugging Face lopen via Pages Functions. Stel `HF_TOKEN` als secret in op het Cloudflare Pages-project voor productie en preview. Een token dat in de app is opgeslagen krijgt voorrang; de Pages-secret is de terugvaloptie. Voor lokaal gebruik kan `HF_TOKEN` via `.dev.vars` aan Wrangler worden doorgegeven.
+
 ## Tech stack
 
 - React 19 en TypeScript
 - Vite
-- `@gradio/client`
+- Cloudflare Pages Functions
 - Hugging Face Spaces met Wan2.2 en FLUX
 
 ## Lokaal draaien
@@ -54,6 +58,7 @@ Open daarna de lokale URL die Vite toont. Voeg desgewenst een Hugging Face-token
 ```text
 .
 ├── components/                 # Generator, videospeler, editor en bediening
+├── functions/api/hf/            # Pages-proxy voor Hugging Face
 ├── services/huggingfaceService.ts
 ├── space/                      # Optionele eigen Hugging Face Space-backend
 ├── App.tsx

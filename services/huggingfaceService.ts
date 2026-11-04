@@ -1,25 +1,6 @@
-import { Client, handle_file } from "@gradio/client";
 import { AspectRatio, VideoConfig, VideoGenerationResult } from "../types";
 
-const IMAGE_TO_VIDEO_SPACE = "zerogpu-aoti/wan2-2-fp8da-aoti-faster";
-const FIRST_LAST_FRAME_SPACE = "multimodalart/wan-2-2-first-last-frame";
-const TEXT_TO_IMAGE_SPACE = "black-forest-labs/FLUX.1-schnell";
-
-const clients = new Map<string, { token: string; promise: Promise<Client> }>();
-
-const getClient = (space: string): Promise<Client> => {
-  const token = localStorage.getItem("vg_hf_token") || "";
-  const cached = clients.get(space);
-  if (cached?.token === token) return cached.promise;
-
-  const promise = Client.connect(space, token ? { hf_token: token as `hf_${string}` } : {});
-  const entry = { token, promise };
-  clients.set(space, entry);
-  promise.catch(() => {
-    if (clients.get(space) === entry) clients.delete(space);
-  });
-  return promise;
-};
+type Space = "i2v" | "flf" | "flux";
 
 const imageBlobFromBase64 = (base64: string): Blob => {
   const encoded = base64.replace(/^data:[^,]*,/, "");
@@ -61,17 +42,144 @@ const centerCropImage = async (image: Blob, aspectRatio: AspectRatio): Promise<B
   return canvasBlob(canvas);
 };
 
-const toSpaceFile = async (base64: string, aspectRatio: AspectRatio) =>
-  handle_file(await centerCropImage(imageBlobFromBase64(base64), aspectRatio));
+const blobToBase64 = async (blob: Blob): Promise<string> => {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+  }
+  return btoa(binary);
+};
+
+const toSpaceFile = async (base64: string, aspectRatio: AspectRatio): Promise<string> =>
+  blobToBase64(await centerCropImage(imageBlobFromBase64(base64), aspectRatio));
+
+const authHeaders = (): Record<string, string> => {
+  const token = localStorage.getItem("vg_hf_token");
+  return token ? { "x-hf-token": token } : {};
+};
+
+const requestError = async (response: Response): Promise<Error> => {
+  const text = await response.text();
+  let message = text;
+  try {
+    const body = JSON.parse(text);
+    if (typeof body?.error === "string") message = body.error;
+    else if (body) message = JSON.stringify(body);
+  } catch {
+    message = text;
+  }
+  return new Error(`Hugging Face request failed with HTTP ${response.status}: ${message}`);
+};
+
+const parseSseBlock = (block: string): { event: string; data: string } => {
+  let event = "message";
+  const data: string[] = [];
+  for (const line of block.split("\n")) {
+    if (line.startsWith(":")) continue;
+    const separator = line.indexOf(":");
+    const field = separator === -1 ? line : line.slice(0, separator);
+    const value = separator === -1 ? "" : line.slice(separator + 1).replace(/^ /, "");
+    if (field === "event") event = value;
+    else if (field === "data") data.push(value);
+  }
+  return { event, data: data.join("\n") };
+};
+
+const eventError = (value: string): string => {
+  try {
+    const parsed = JSON.parse(value);
+    if (typeof parsed === "string") return parsed;
+    if (typeof parsed?.error === "string") return parsed.error;
+    if (parsed) return JSON.stringify(parsed);
+  } catch {
+    return value;
+  }
+  return "";
+};
+
+const callSpace = async (
+  space: Space,
+  data: unknown[],
+  files: Record<string, string>,
+  onProgress: (status: string) => void
+): Promise<any[]> => {
+  const startResponse = await fetch("/api/hf/start", {
+    method: "POST",
+    headers: { "content-type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ space, data, files })
+  });
+  if (!startResponse.ok) throw await requestError(startResponse);
+
+  const startBody = await startResponse.json();
+  if (typeof startBody?.event_id !== "string") {
+    throw new Error("Hugging Face did not return an event ID.");
+  }
+
+  onProgress("Job queued on Hugging Face ZeroGPU...");
+  const resultUrl = new URL("/api/hf/result", window.location.origin);
+  resultUrl.searchParams.set("space", space);
+  resultUrl.searchParams.set("event_id", startBody.event_id);
+  const resultResponse = await fetch(resultUrl, { headers: authHeaders() });
+  if (!resultResponse.ok) throw await requestError(resultResponse);
+  if (!resultResponse.body) throw new Error("Hugging Face returned an empty event stream.");
+
+  const reader = resultResponse.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (value) buffer += decoder.decode(value, { stream: true });
+    if (done) buffer += decoder.decode();
+    buffer = buffer.replace(/\r\n/g, "\n");
+
+    let boundary = buffer.indexOf("\n\n");
+    while (boundary !== -1) {
+      const block = buffer.slice(0, boundary);
+      buffer = buffer.slice(boundary + 2);
+      const { event, data: eventData } = parseSseBlock(block);
+      if (event === "complete") {
+        await reader.cancel();
+        const result = JSON.parse(eventData);
+        if (!Array.isArray(result)) throw new Error("Hugging Face returned an invalid result.");
+        return result;
+      }
+      if (event === "error") {
+        await reader.cancel();
+        throw new Error(eventError(eventData) || "Hugging Face Space returned an error (often ZeroGPU quota). Try again later or add a token.");
+      }
+      if (event === "generating" || event === "progress") {
+        onProgress("Generating on Hugging Face ZeroGPU...");
+      }
+      boundary = buffer.indexOf("\n\n");
+    }
+
+    if (done) {
+      if (buffer.trim()) {
+        const { event, data: eventData } = parseSseBlock(buffer);
+        if (event === "complete") {
+          const result = JSON.parse(eventData);
+          if (!Array.isArray(result)) throw new Error("Hugging Face returned an invalid result.");
+          return result;
+        }
+        if (event === "error") {
+          throw new Error(eventError(eventData) || "Hugging Face Space returned an error (often ZeroGPU quota). Try again later or add a token.");
+        }
+      }
+      throw new Error("Hugging Face event stream ended before the job completed.");
+    }
+  }
+};
 
 const outputUrl = (value: any): string | undefined =>
   value?.video?.url ?? value?.image?.url ?? value?.url ?? value;
 
 const downloadBlob = async (uri: string): Promise<Blob> => {
-  const response = await fetch(uri);
-  if (!response.ok) {
-    throw new Error(`Failed to download the generated file: ${response.status} ${response.statusText}`);
-  }
+  const response = await fetch(`/api/hf/file?url=${encodeURIComponent(uri)}`, {
+    headers: authHeaders()
+  });
+  if (!response.ok) throw await requestError(response);
   const blob = await response.blob();
   if (blob.size === 0) throw new Error("Downloaded video file is empty.");
   return blob;
@@ -85,15 +193,15 @@ const qualitySteps = (quality: VideoConfig["quality"], firstLastFrame = false): 
 };
 
 const fetchImage = async (uri: string): Promise<Blob> => {
-  const response = await fetch(uri);
-  if (!response.ok) {
-    throw new Error(`Failed to download the generated start frame: ${response.status} ${response.statusText}`);
-  }
+  const response = await fetch(`/api/hf/file?url=${encodeURIComponent(uri)}`, {
+    headers: authHeaders()
+  });
+  if (!response.ok) throw await requestError(response);
   return response.blob();
 };
 
-const videoUrlFromResult = (result: any): string => {
-  const uri = outputUrl(result?.data?.[0]);
+const videoUrlFromResult = (data: any[]): string => {
+  const uri = outputUrl(data?.[0]);
   if (typeof uri !== "string") {
     throw new Error("Hugging Face did not return a video URL.");
   }
@@ -101,47 +209,34 @@ const videoUrlFromResult = (result: any): string => {
 };
 
 const runImageToVideo = async (
-  inputImage: unknown,
+  inputImage: string,
   prompt: string,
   config: VideoConfig,
   onProgress: (status: string) => void
 ): Promise<string> => {
-  const client = await getClient(IMAGE_TO_VIDEO_SPACE);
-  onProgress("Job queued on Hugging Face ZeroGPU...");
-  const result = await client.predict("/generate_video", {
-    input_image: inputImage,
-    prompt,
-    steps: qualitySteps(config.quality),
-    duration_seconds: 3.5,
-    guidance_scale: 1,
-    guidance_scale_2: 1,
-    seed: 42,
-    randomize_seed: true
-  });
-  return videoUrlFromResult(result);
+  const data = await callSpace(
+    "i2v",
+    [null, prompt, qualitySteps(config.quality), "", 3.5, 1, 1, 42, true],
+    { "0": inputImage },
+    onProgress
+  );
+  return videoUrlFromResult(data);
 };
 
 const runFirstLastFrame = async (
-  startImage: unknown,
-  endImage: unknown,
+  startImage: string,
+  endImage: string,
   prompt: string,
   config: VideoConfig,
   onProgress: (status: string) => void
 ): Promise<string> => {
-  const client = await getClient(FIRST_LAST_FRAME_SPACE);
-  onProgress("Job queued on Hugging Face ZeroGPU...");
-  const result = await client.predict("/generate_video", {
-    start_image_pil: startImage,
-    end_image_pil: endImage,
-    prompt,
-    duration_seconds: 2.1,
-    steps: qualitySteps(config.quality, true),
-    guidance_scale: 1,
-    guidance_scale_2: 1,
-    seed: 42,
-    randomize_seed: true
-  });
-  return videoUrlFromResult(result);
+  const data = await callSpace(
+    "flf",
+    [null, null, prompt, "", 2.1, qualitySteps(config.quality, true), 1, 1, 42, true],
+    { "0": startImage, "1": endImage },
+    onProgress
+  );
+  return videoUrlFromResult(data);
 };
 
 const captureLastFrame = async (videoUrl: string): Promise<Blob> =>
@@ -221,23 +316,25 @@ export const generateVeoVideo = async (
 
   if (config.mode === "text") {
     onProgress("Generating start frame with FLUX...");
-    const client = await getClient(TEXT_TO_IMAGE_SPACE);
-    const width = config.aspectRatio === "16:9" ? 832 : 480;
-    const height = config.aspectRatio === "16:9" ? 480 : 832;
-    const imageResult = await client.predict("/infer", {
-      prompt: config.prompt,
-      seed: 42,
-      randomize_seed: true,
-      width,
-      height,
-      num_inference_steps: 4
-    });
-    const imageUrl = outputUrl((imageResult as any)?.data?.[0]);
+    const imageData = await callSpace(
+      "flux",
+      [
+        config.prompt,
+        42,
+        true,
+        config.aspectRatio === "16:9" ? 832 : 480,
+        config.aspectRatio === "16:9" ? 480 : 832,
+        4
+      ],
+      {},
+      onProgress
+    );
+    const imageUrl = outputUrl(imageData?.[0]);
     if (typeof imageUrl !== "string") {
       throw new Error("Hugging Face did not return a start frame URL.");
     }
     const startFrameBlob = await centerCropImage(await fetchImage(imageUrl), config.aspectRatio);
-    const startFrame = handle_file(startFrameBlob);
+    const startFrame = await blobToBase64(startFrameBlob);
     hfVideoUrl = await runImageToVideo(startFrame, config.prompt, config, onProgress);
   } else if (config.mode === "keyframes" || config.mode === "key_ref") {
     if (!config.sourceImageBase64 || !config.endImageBase64) {
@@ -279,7 +376,7 @@ export const extendVeoVideo = async (
   onProgress("Extracting the last frame...");
   const lastFrame = await captureLastFrame(previousVideoUrl);
   const croppedFrame = await centerCropImage(lastFrame, aspectRatio);
-  const inputImage = handle_file(croppedFrame);
+  const inputImage = await blobToBase64(croppedFrame);
   const config: VideoConfig = {
     prompt,
     aspectRatio,
