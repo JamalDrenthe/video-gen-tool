@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Gen Tool | Wan2.1 VACE</title>
+<meta name="description" content="Genereer video's met Wan2.1-VACE-14B via Hugging Face">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="bg-orbs"><div class="orb a"></div><div class="orb b"></div><div class="orb c"></div></div>
+
+<main class="shell">
+  <header class="brand">
+    <div class="logo">JD</div>
+    <div>
+      <h1>Video Gen Tool</h1>
+      <p class="sub">Wan2.1-VACE-14B · Hugging Face Space</p>
+    </div>
+    <button id="themeToggle" class="ghost" title="Thema wisselen">◐</button>
+  </header>
+
+  <section class="card glass">
+    <label class="field">
+      <span>Beelden (verplicht, meerdere mogelijk)</span>
+      <input id="images" type="file" accept="image/*" multiple>
+    </label>
+    <div id="previews" class="previews"></div>
+
+    <label class="field">
+      <span>Modus</span>
+      <select id="mode">
+        <option value="Reference">Reference — animeer vanuit referentie-beelden</option>
+        <option value="First - Last Frame">First - Last Frame — tussen twee beelden</option>
+        <option value="Random Transitions">Random Transitions — overgangen tussen beelden</option>
+      </select>
+    </label>
+
+    <label class="field">
+      <span>HF token (optioneel, meer ZeroGPU-quota — blijft in je browser)</span>
+      <input id="hfToken" type="password" placeholder="hf_…" autocomplete="off">
+    </label>
+
+    <label class="field">
+      <span>Prompt</span>
+      <textarea id="prompt" rows="3" placeholder="Beschrijf de video die je wilt genereren…"></textarea>
+    </label>
+
+    <details class="advanced">
+      <summary>Geavanceerd</summary>
+      <label class="field">
+        <span>Negatieve prompt</span>
+        <textarea id="negative" rows="2"></textarea>
+      </label>
+      <div class="grid3">
+        <label class="field"><span>Resolutie</span>
+          <select id="size">
+            <option value="512x896">512 × 896</option>
+            <option value="480x832">480 × 832</option>
+            <option value="640x640">640 × 640</option>
+            <option value="896x512">896 × 512</option>
+            <option value="832x480">832 × 480</option>
+          </select>
+        </label>
+        <label class="field"><span>Duur (sec)</span>
+          <input id="duration" type="number" value="2.3" min="1" max="5" step="0.1">
+        </label>
+        <label class="field"><span>Steps</span>
+          <input id="steps" type="number" value="6" min="2" max="12">
+        </label>
+        <label class="field"><span>Guidance</span>
+          <input id="cfg" type="number" value="1" min="1" max="10" step="0.5">
+        </label>
+        <label class="field"><span>Seed (-1 = random)</span>
+          <input id="seed" type="number" value="-1">
+        </label>
+        <label class="field"><span>Achtergrond weg</span>
+          <select id="removeBg"><option value="no">Uit</option><option value="yes">Aan (alleen Reference)</option></select>
+        </label>
+      </div>
+    </details>
+
+    <button id="generate" class="primary">Genereer video</button>
+    <p id="status" class="status" role="status"></p>
+  </section>
+
+  <section id="resultCard" class="card glass hidden">
+    <video id="video" controls playsinline></video>
+    <a id="download" class="ghost" download="video-gen.mp4">Download MP4</a>
+  </section>
+
+  <footer class="foot">Backend: HF Space <code id="spaceName"></code> · geen Google API meer</footer>
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

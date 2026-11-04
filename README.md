@@ -1,11 +1,20 @@
-<div align="center">
+# Video Gen Tool
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+Genereer video's met **Wan2.1-VACE-14B** — geen Google API meer.
 
-  <h1>Built with AI Studio</h2>
+## Onderdelen
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+- `index.html`, `app.js`, `style.css` — statische frontend (Vercel-deploybaar) die de publieke Space [`linoyts/wan2-1-VACE-fast`](https://huggingface.co/spaces/linoyts/wan2-1-VACE-fast) aanroept als gratis API via `@gradio/client` (`/generate_video`). De Space draait Wan2.1-VACE-14B + FusionX LoRA op ZeroGPU.
+- `space/` — optioneel: eigen Gradio Space backend (`app.py` met `WanVACEPipeline`) voor als je een eigen GPU-Space wilt draaien.
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+## Modi (VACE vereist minimaal 1 beeld)
 
-</div>
+- **Reference** — animeer vanuit referentie-beelden
+- **First - Last Frame** — video tussen twee beelden
+- **Random Transitions** — overgangen tussen meerdere beelden
+
+## Eigen Space (optioneel)
+
+1. Maak een Space op huggingface.co (SDK: Gradio), kopieer `space/` als repo-root
+2. Kies GPU-hardware in Settings (14B-model: A10G/L40S of ZeroGPU)
+3. Zet `SPACE` in `app.js` op jouw Space-slug
