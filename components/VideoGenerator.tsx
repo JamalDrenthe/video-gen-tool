@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { AspectRatio, GenerationMode, Resolution, VideoConfig, VideoHistoryItem, VideoQuality } from '../types';
 import { generateVeoVideo, extendVeoVideo, downloadVideoUri } from '../services/huggingfaceService';
 import VideoEditor from './VideoEditor';
+import SceneBuilder from './SceneBuilder';
 
 type SortOption = 'date-desc' | 'date-asc' | 'prompt-desc' | 'prompt-asc';
 
@@ -364,7 +365,7 @@ const VideoGenerator: React.FC = () => {
 
           {/* Mode Selector - Mobile horizontally scrollable */}
           <div className="flex bg-slate-900 rounded-xl p-1 mb-6 border border-slate-700 shadow-inner overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            {(['text', 'image', 'keyframes', 'reference', 'key_ref'] as GenerationMode[]).map(m => (
+            {(['scenes', 'text', 'image', 'keyframes', 'reference', 'key_ref'] as GenerationMode[]).map(m => (
               <button
                 key={m}
                 onClick={() => setMode(m)}
@@ -375,6 +376,7 @@ const VideoGenerator: React.FC = () => {
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                 } disabled:opacity-50`}
               >
+                {m === 'scenes' && <i className="fa-solid fa-clapperboard"></i>}
                 {m === 'text' && <i className="fa-solid fa-align-left"></i>}
                 {m === 'image' && <i className="fa-solid fa-image"></i>}
                 {m === 'keyframes' && <i className="fa-solid fa-film"></i>}
@@ -384,6 +386,34 @@ const VideoGenerator: React.FC = () => {
               </button>
             ))}
           </div>
+
+          {mode === 'scenes' && (
+            <SceneBuilder
+              aspectRatio={aspectRatio}
+              resolution={resolution}
+              disabled={isGenerating}
+              onStatus={setLoadingStatus}
+              onError={setError}
+              onVideo={(url, label) => {
+                setVideoUrl(url);
+                setCurrentRawVideoObject(null);
+                const newItem: VideoHistoryItem = {
+                  id: Date.now().toString(),
+                  prompt: label,
+                  timestamp: Date.now(),
+                  aspectRatio,
+                  resolution,
+                  serverUri: '',
+                  mode: 'scenes',
+                  quality,
+                  customAudioName: customAudioName || undefined,
+                  customAudioUrl: customAudioUrl || undefined,
+                };
+                blobCache.current[newItem.id] = url;
+                setHistory(prev => [newItem, ...prev]);
+              }}
+            />
+          )}
 
           {/* Dynamic File Upload Zones */}
           {mode === 'image' && (
@@ -457,6 +487,7 @@ const VideoGenerator: React.FC = () => {
           )}
 
           {/* Prompt Input Area */}
+          {mode !== 'scenes' && (
           <div className="mb-6 flex flex-col flex-grow">
             <label className="text-xs sm:text-sm font-semibold text-slate-300 mb-2 flex items-center justify-between">
               <div className="flex items-center gap-1.5 sm:gap-2">
@@ -480,10 +511,12 @@ const VideoGenerator: React.FC = () => {
               className="w-full h-28 sm:h-32 lg:h-48 bg-slate-900 border border-slate-700 rounded-xl p-3 sm:p-4 text-sm sm:text-base text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none disabled:opacity-50 transition-shadow"
             />
           </div>
+          )}
 
           <div className="space-y-5 mb-6">
 
             {/* Audio & Language Toggles */}
+            {mode !== 'scenes' && (
             <div>
               <label className="text-xs sm:text-sm font-semibold text-slate-300 mb-2 flex justify-between items-center">
                 Audio & Language
@@ -582,6 +615,7 @@ const VideoGenerator: React.FC = () => {
                 </label>
               </div>
             </div>
+            )}
 
             {/* Aspect Ratio Toggle */}
             <div>
@@ -656,6 +690,7 @@ const VideoGenerator: React.FC = () => {
           </div>
 
           {/* Advanced Settings Toggle */}
+          {mode !== 'scenes' && (
           <div className="mb-6 sm:mb-8">
             <button
               type="button"
@@ -700,6 +735,7 @@ const VideoGenerator: React.FC = () => {
               </div>
             )}
           </div>
+          )}
 
           <div className="mt-auto">
             {error && (
@@ -709,6 +745,7 @@ const VideoGenerator: React.FC = () => {
               </div>
             )}
 
+            {mode !== 'scenes' && (
             <button
               onClick={handleGenerate}
               disabled={!validateInputs()}
@@ -726,6 +763,7 @@ const VideoGenerator: React.FC = () => {
                 </>
               )}
             </button>
+            )}
           </div>
         </div>
       </div>

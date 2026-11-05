@@ -1,0 +1,21 @@
+{
+  "name": "video-gen-renderer",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [{ "name": "RENDERER", "class_name": "Renderer" }]
+  },
+  "containers": [
+    {
+      "class_name": "Renderer",
+      "image": "./container/Dockerfile",
+      "max_instances": 3,
+      "instance_type": "standard"
+    }
+  ],
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Renderer"] }],
+  "r2_buckets": [
+    { "binding": "ASSETS", "bucket_name": "video-gen-assets" }
+  ]
+}

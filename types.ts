@@ -1,6 +1,6 @@
 export type AspectRatio = '16:9' | '9:16';
 export type Resolution = '720p' | '1080p';
-export type GenerationMode = 'text' | 'image' | 'keyframes' | 'reference' | 'key_ref';
+export type GenerationMode = 'text' | 'image' | 'keyframes' | 'reference' | 'key_ref' | 'scenes';
 export type VideoQuality = 'high' | 'standard' | 'low';
 
 export interface VideoConfig {
