@@ -524,7 +524,7 @@ const VideoGenerator: React.FC = () => {
 
               <div className="mb-3 sm:mb-4 text-[9px] sm:text-[10px] text-slate-400 flex gap-2 items-start bg-slate-900/50 p-2 sm:p-2.5 rounded-lg border border-slate-800 shadow-inner">
                 <i className="fa-solid fa-circle-info mt-0.5 text-indigo-400"></i>
-                <p>Wan2.2 generates <b>silent</b> videos natively. To hear sound, upload a <b>Custom Soundtrack</b> below which will be bundled into your final export.</p>
+                <p>AI generation produces <b>silent</b> videos. To hear sound, upload a <b>Custom Soundtrack</b> below which will be bundled into your final export.</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">

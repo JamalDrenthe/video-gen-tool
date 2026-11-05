@@ -7,7 +7,7 @@ interface LoadingOverlayProps {
 }
 
 const reassuranceMessages = [
-  "Initializing Wan2.2 model...",
+  "Initializing video model...",
   "Analyzing scene semantics...",
   "Synthesizing spatial composition...",
   "Calculating temporal consistency...",
