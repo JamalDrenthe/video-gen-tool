@@ -13,7 +13,7 @@ const App: React.FC = () => {
             <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
               JD Video Studio
             </h1>
-            <p className="text-xs text-slate-400">Powered by Wan2.2 on Hugging Face</p>
+            <p className="text-xs text-slate-400">Scene-based video creation, rendered on Cloudflare</p>
           </div>
         </div>
       </header>

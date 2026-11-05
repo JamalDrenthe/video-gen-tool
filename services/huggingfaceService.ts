@@ -106,7 +106,7 @@ const callSpace = async (
   });
   if (!startResponse.ok) throw await requestError(startResponse);
 
-  const startBody = await startResponse.json();
+  const startBody = (await startResponse.json()) as { event_id?: string };
   if (typeof startBody?.event_id !== "string") {
     throw new Error("Hugging Face did not return an event ID.");
   }
